@@ -1,0 +1,13 @@
+{
+  "name": "blog",
+  "devDependencies": {
+    "@biomejs/biome": "2.4.9",
+    "@types/bun": "latest",
+    "bun-plugin-tailwind": "^0.1.2",
+    "tailwindcss": "^4.2.2",
+    "typescript": "^6.0.2"
+  },
+  "private": true,
+  "trustedDependencies": ["bun-plugin-tailwind"],
+  "type": "module"
+}

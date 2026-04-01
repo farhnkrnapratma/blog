@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel>
+    <title>Technical Insights by Farhan Kurnia Pratama</title>
+    <link>https://fkp.my.id/blog</link>
+    <description>Technical insights from a Software Engineer specializing in Linux/Unix and FOSS, exploring secure software design, system security, and digital privacy.</description>
+    <language>en-US</language>
+    <copyright>Copyright 2026 Farhan Kurnia Pratama</copyright>
+    <lastBuildDate>Wed, 01 Apr 2026 09:22:54 +0700</lastBuildDate>
+    <managingEditor>contact@fkp.my.id (Farhan Kurnia Pratama)</managingEditor>
+    <webMaster>contact@fkp.my.id (Farhan Kurnia Pratama)</webMaster>
+    <generator>Bash Script (https://github.com/farhnkrnapratma/www/generate.sh)</generator>
+    <docs>https://www.rssboard.org/rss-specification</docs>
+    <ttl>60</ttl>
+    <image>
+      <url>https://fkp.my.id/android-chrome-192x192.png</url>
+      <title>Technical Insights by Farhan Kurnia Pratama</title>
+      <link>https://fkp.my.id/blog</link>
+    </image>
+    <atom:link href="https://fkp.my.id/rss.xml" rel="self" type="application/rss+xml"/>
+    <item>
+      <title>AI-Based Business Ideas with Massive Scale Potential</title>
+      <link>https://fkp.my.id/blog/2026/04/ai-business-ideas</link>
+      <guid isPermaLink="true">https://fkp.my.id/blog/2026/04/ai-business-ideas</guid>
+      <description>Exploring several B2B business models using AI that can generate high and stable income.</description>
+      <content:encoded><![CDATA[<p>The utilization of artificial intelligence (AI) is no longer just a
+trend, but rather a fundamental infrastructure for modern business
+efficiency. Building SaaS (Software as a Service) products that
+integrate AI has tremendous scalability potential.</p>
+<p>Here are a few business architectures I am currently researching:</p>
+<ol type="1">
+<li><p><strong>B2B Financial Report Automation</strong> Using LLMs to
+extract and standardize data from thousands of irregular invoices or
+receipts into an audit-ready format.</p></li>
+<li><p><strong>Domain-Specific Coding Assistant</strong> Unlike general
+coding assistants, this AI is trained on an enterprise’s internal
+<em>codebase</em> repositories so it understands their internal
+architecture and security standards.</p></li>
+</ol>
+<p>The key to these ideas is focusing on solving specific,
+<em>high-ticket pain points</em> for companies, rather than just
+wrapping a ChatGPT <em>prompt</em> into a regular application.</p>]]></content:encoded>
+      <pubDate>Thu, 02 Apr 2026 14:30:00 +0700</pubDate>
+      <dc:creator>Farhan Kurnia Pratama</dc:creator>
+    </item>
+    <item>
+      <title>Building a Wayland Desktop Environment with Rust and GTK4</title>
+      <link>https://fkp.my.id/blog/2026/01/wayland-rust-de</link>
+      <guid isPermaLink="true">https://fkp.my.id/blog/2026/01/wayland-rust-de</guid>
+      <description>Notes on my journey building a custom DE using the Rust, GTK-rs, and libadwaita ecosystem.</description>
+      <content:encoded><![CDATA[<p>Exploring the creation of a custom <em>Desktop Environment</em> (DE)
+running on the Wayland protocol is a very exciting challenge.</p>
+<p>I really love the interface of GNOME’s default applications, but for
+the desktop environment itself, I want something tailored specifically
+to my own workflow. Using <strong>Rust</strong> combined with
+<strong>GTK-rs</strong> and <code>libadwaita</code> provides a
+combination of performance, memory safety, and a modern interface
+look.</p>
+<h3 id="why-rust">Why Rust?</h3>
+<p>Rust’s built-in <em>memory safety</em> is crucial when dealing with
+low-level components like a Wayland <em>compositor</em>. We can avoid
+many of the <em>bugs</em> that frequently occur in C/C++.</p>
+<p>Here is an example of a simple GTK4 application initialization in
+Rust:</p>
+<pre class="rust"><code>use gtk::prelude::*;
+use gtk::{Application, ApplicationWindow};
+
+fn main() {
+    let app = Application::builder()
+        .application_id(&quot;id.my.fkp.wayland_de&quot;)
+        .build();
+
+    app.connect_activate(|app| {
+        let window = ApplicationWindow::builder()
+            .application(app)
+            .title(&quot;My Custom DE&quot;)
+            .default_width(800)
+            .default_height(600)
+            .build();
+        window.present();
+    });
+
+    app.run();
+}</code></pre>]]></content:encoded>
+      <pubDate>Mon, 12 Jan 2026 09:23:00 +0700</pubDate>
+      <dc:creator>Farhan Kurnia Pratama</dc:creator>
+    </item>
+  </channel>
+</rss>
