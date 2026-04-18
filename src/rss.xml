@@ -1,0 +1,596 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel>
+    <title>Technical Insights by Farhan Kurnia Pratama</title>
+    <link>https://blog.fkp.my.id/</link>
+    <description>Technical insights from a Software Engineer specializing in Linux/Unix and FOSS, exploring secure software design, system security, and digital privacy.</description>
+    <language>en-US</language>
+    <copyright>Copyright 2026 Farhan Kurnia Pratama</copyright>
+    <lastBuildDate>Sun, 19 Apr 2026 03:41:41 +0700</lastBuildDate>
+    <managingEditor>contact@fkp.my.id (Farhan Kurnia Pratama)</managingEditor>
+    <webMaster>contact@fkp.my.id (Farhan Kurnia Pratama)</webMaster>
+    <generator>Bash Script</generator>
+    <docs>https://www.rssboard.org/rss-specification</docs>
+    <ttl>60</ttl>
+    <image>
+      <url>https://cdn.fkp.my.id/static/favicons/android-chrome-192x192.png</url>
+      <title>Technical Insights by Farhan Kurnia Pratama</title>
+      <link>https://blog.fkp.my.id/</link>
+    </image>
+    <atom:link href="https://blog.fkp.my.id/rss.xml" rel="self" type="application/rss+xml"/>
+    <item>
+      <title>Snap Flaw Enables Local Privilege Escalation To Root</title>
+      <link>https://blog.fkp.my.id/snap-flaw-enables-local-privilege-escalation-to-root/</link>
+      <guid isPermaLink="true">https://blog.fkp.my.id/snap-flaw-enables-local-privilege-escalation-to-root/</guid>
+      <description>Local privilege escalation in snapd on Linux allows local attackers to get root privilege.</description>
+      <content:encoded><![CDATA[<blockquote>
+<h2 id="tldr">TL;DR</h2>
+<ul>
+<li>CVE-2026-3888 is a local privilege escalation in snapd where
+systemd-tmpfiles cleanup of <code>/tmp/.snap</code> creates a window for
+an attacker to inject attacker-controlled files that snap-confine later
+bind-mounts as root</li>
+<li>Rated High severity with a CVSS 3.1 score of 7.8; exploitation
+requires a low-privileged local account and a waiting period of 10 to 30
+days, with no user interaction needed</li>
+<li>Update snapd immediately to the vendor-patched release; Ubuntu
+Server installations are unaffected in default configurations because
+the cleanup timer is disabled</li>
+<li>The flaw is a TOCTOU race condition affecting Ubuntu Desktop 24.04
+and later; legacy LTS releases received hardening patches though they
+are not vulnerable by default</li>
+</ul>
+</blockquote>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr>
+<th>Field</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CVE ID</td>
+<td>CVE-2026-3888</td>
+</tr>
+<tr>
+<td>CVSS Score</td>
+<td>7.8</td>
+</tr>
+<tr>
+<td>CVSS Vector</td>
+<td>CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:C/C:H/I:H/A:H</td>
+</tr>
+<tr>
+<td>CVSS Version</td>
+<td>3.1</td>
+</tr>
+<tr>
+<td>CVSS Source</td>
+<td>Canonical</td>
+</tr>
+<tr>
+<td>Vulnerability Type</td>
+<td>Local Privilege Escalation / TOCTOU Race Condition</td>
+</tr>
+<tr>
+<td>Affected Software</td>
+<td>snapd</td>
+</tr>
+<tr>
+<td>Affected Versions</td>
+<td>Ubuntu Desktop &gt;= 24.04 default installations; upstream snapd
+prior to 2.75</td>
+</tr>
+<tr>
+<td>Patch Status</td>
+<td>Patched</td>
+</tr>
+<tr>
+<td>PoC Publicly Available</td>
+<td>Exploitation methodology publicly documented</td>
+</tr>
+</tbody>
+</table>
+<h2 id="context">Context</h2>
+<p>snapd is the daemon behind Ubuntu’s Snap packaging system, installed
+and active by default on millions of Ubuntu Desktop hosts. The
+vulnerability lies in an interaction between two privileged components:
+<code>snap-confine</code>, the setuid root binary that constructs
+sandbox environments, and <code>systemd-tmpfiles</code>, which handles
+lifecycle management of volatile directories like <code>/tmp</code>.</p>
+<p>In default Ubuntu Desktop configurations,
+<code>systemd-tmpfiles</code> periodically removes stale directories
+under <code>/tmp</code>. One of those directories,
+<code>/tmp/.snap</code>, is used by <code>snap-confine</code> during
+sandbox initialization. When the cleanup routine deletes it, a local
+attacker can recreate the directory and populate it with malicious
+content before <code>snap-confine</code> executes again. Because
+<code>snap-confine</code> runs with elevated privileges and performs
+bind mounts on that path, the attacker achieves arbitrary code execution
+as root.</p>
+<p>The attack complexity is high because it depends on timing. On Ubuntu
+24.04, the cleanup interval is roughly 30 days; on 25.10, it drops to
+about 10 days. No user interaction is required, and the attacker only
+needs a low-privileged local account. I have not seen evidence of active
+in-the-wild exploitation, but the mechanism has been reliably reproduced
+in research and training environments.</p>
+<h2 id="disclosure-timeline">Disclosure Timeline</h2>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr>
+<th>Date</th>
+<th>Event</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>2026-03-17</td>
+<td>Qualys publishes advisory; Ubuntu releases USN-8102-1 and
+USN-8102-2; NVD publishes entry</td>
+</tr>
+<tr>
+<td>2026-03-18</td>
+<td>NVD last modified</td>
+</tr>
+<tr>
+<td>2026-03-25</td>
+<td>Ubuntu security page last updated</td>
+</tr>
+</tbody>
+</table>
+<h2 id="technical-detail">Technical Detail</h2>
+<p>The root cause is a <strong>time-of-check to time-of-use
+(TOCTOU)</strong> gap combined with predictable cleanup behavior.
+<code>snap-confine</code> assumes that <code>/tmp/.snap</code> is a
+trusted directory created and managed by the system.
+<code>systemd-tmpfiles</code>, configured via drop-in files under
+<code>/usr/lib/tmpfiles.d/</code>, automatically deletes directories
+that exceed a staleness threshold.</p>
+<p>The triggering condition is straightforward:</p>
+<ol type="1">
+<li><code>systemd-tmpfiles</code> removes <code>/tmp/.snap</code> during
+its scheduled cleanup.</li>
+<li>The attacker detects the deletion and recreates
+<code>/tmp/.snap</code> with attacker-owned files or symlinks.</li>
+<li>The next time <code>snap-confine</code> initializes a sandbox, it
+bind-mounts the attacker-controlled directory into the mount namespace
+with root privileges.</li>
+</ol>
+<p>This is not a memory corruption bug. It is a logic flaw in how two
+legitimate system utilities trust shared state in a world-writable
+parent directory. Server installations avoid the issue by default
+because <code>systemd-tmpfiles-clean.timer</code> is not enabled on
+Ubuntu Server, so the directory is never automatically removed.</p>
+<p>During the same review window, Qualys also identified a race
+condition in the <code>uutils</code> coreutils <code>rm</code> utility
+affecting Ubuntu 25.10. That flaw allowed arbitrary file deletion during
+root-owned cron jobs. Ubuntu reverted the default <code>rm</code> to GNU
+coreutils prior to release and patched the upstream package separately.
+While related to the same research effort, it is a distinct
+vulnerability tracked outside CVE-2026-3888.</p>
+<h2 id="mitigation">Mitigation</h2>
+<p>Until patching is complete, reduce exposure with the following
+controls:</p>
+<ul>
+<li><strong>Restrict local access</strong>: This vulnerability requires
+a local account. Remove unnecessary users and enforce least-privilege
+access on shared workstations.</li>
+<li><strong>Monitor <code>/tmp/.snap</code></strong>: Audit for
+unexpected ownership or permission changes on <code>/tmp/.snap</code>. A
+directory owned by an unprivileged user is a clear anomaly.</li>
+<li><strong>Audit temporary directory activity</strong>: Look for
+unusual file creation or symlink activity immediately under
+<code>/tmp</code>.</li>
+</ul>
+<p>These steps do not eliminate the vulnerability, but they increase the
+probability of detecting precursor activity.</p>
+<h2 id="remediation">Remediation</h2>
+<p>Canonical has released patches for all supported Ubuntu releases.
+Upgrade <code>snapd</code> to the fixed version for your
+distribution:</p>
+<ul>
+<li><strong>Ubuntu 24.04 LTS</strong>: <code>snapd</code>
+2.73+ubuntu24.04.2 or later</li>
+<li><strong>Ubuntu 25.10 LTS</strong>: <code>snapd</code>
+2.73+ubuntu25.10.1 or later</li>
+<li><strong>Ubuntu 26.04 LTS (Dev)</strong>: <code>snapd</code>
+2.74.1+ubuntu26.04.1 or later</li>
+<li><strong>Ubuntu 22.04 LTS</strong>: <code>snapd</code>
+2.73+ubuntu22.04.1 or later</li>
+<li><strong>Ubuntu 20.04 LTS</strong>: <code>snapd</code>
+2.67.1+20.04ubuntu1~esm1 or later (via Ubuntu Pro)</li>
+<li><strong>Ubuntu 18.04/16.04 LTS</strong>: ESM patches available via
+Ubuntu Pro</li>
+</ul>
+<p>Upstream <code>snapd</code> versions prior to 2.75 are affected. The
+fix ensures that <code>snap-confine</code> validates the state of
+<code>/tmp/.snap</code> before performing privileged operations, closing
+the race window.</p>
+<h2 id="verification">Verification</h2>
+<p>Confirm the patch is installed and the system is not running an
+affected configuration:</p>
+<pre class="bash"><code># Check installed snapd version
+dpkg -l | grep snapd
+
+# Verify the cleanup timer is inactive on server installations
+systemctl is-active systemd-tmpfiles-clean.timer
+
+# Inspect /tmp/.snap ownership and permissions
+ls -ld /tmp/.snap</code></pre>
+<p>On a fully patched Ubuntu Desktop 24.04 or 25.10,
+<code>dpkg -l</code> should show the fixed release. If
+<code>systemd-tmpfiles-clean.timer</code> reports <code>inactive</code>,
+the host is not vulnerable via the default vector. If
+<code>/tmp/.snap</code> is present, it should be owned by
+<code>root</code>.</p>
+<h2 id="references">References</h2>
+<ul>
+<li><a
+href="https://blog.qualys.com/vulnerabilities-threat-research/2026/03/17/cve-2026-3888-important-snap-flaw-enables-local-privilege-escalation-to-root">Qualys
+- CVE-2026-3888 Advisory</a></li>
+<li><a href="https://ubuntu.com/security/CVE-2026-3888">Ubuntu Security
+- CVE-2026-3888</a></li>
+<li><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-3888">NVD -
+CVE-2026-3888</a></li>
+<li><a
+href="https://www.hackthebox.com/blog/CVE-2026-27944-CVE-2026-3888">Hack
+The Box - Snapshots and Slip-Ups</a></li>
+</ul>]]></content:encoded>
+      <pubDate>Mon, 13 Apr 2026 03:30:23 +0700</pubDate>
+      <dc:creator>Farhan Kurnia Pratama</dc:creator>
+    </item>
+    <item>
+      <title>Linux Kernel NFSv4 LOCK Replay Heap Overflow</title>
+      <link>https://blog.fkp.my.id/linux-kernel-nfsv4-lock-replay-heap-overflow/</link>
+      <guid isPermaLink="true">https://blog.fkp.my.id/linux-kernel-nfsv4-lock-replay-heap-overflow/</guid>
+      <description>Heap overflow in Linux NFSv4 replay cache lets unauthenticated attackers trigger out-of-bounds writes via crafted conflicting LOCK requests.</description>
+      <content:encoded><![CDATA[<blockquote>
+<h2 id="tldr">TL;DR</h2>
+<ul>
+<li><strong>Heap overflow</strong> in Linux kernel NFSv4.0 server replay
+cache allows slab-out-of-bounds write of up to 944 bytes when caching
+LOCK denial responses containing large lock owner strings</li>
+<li><strong>High severity</strong> (CVSS 3.x: 8.1) - remotely
+exploitable by unauthenticated attackers with network access to NFSv4.0
+services; no known exploits in the wild yet</li>
+<li><strong>Immediate action</strong>: Upgrade to patched kernel
+versions (6.1.167+, 6.6.130+, 6.12.78+, 6.18.20+, 6.19.10+, or 7.0-rc5+)
+or apply vendor patches</li>
+<li><strong>Discovered by Nicholas Carlini</strong> and disclosed April
+3, 2026; affects all Linux kernels from 2.6.12 through stable branches
+prior to March 2025 fixes</li>
+</ul>
+</blockquote>
+<h2 id="vulnerability-summary">Vulnerability Summary</h2>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr>
+<th>Field</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CVE</code> ID</td>
+<td>CVE-2026-31402</td>
+</tr>
+<tr>
+<td><code>CVSS</code> Score</td>
+<td>8.1 (CVSS 3.x)</td>
+</tr>
+<tr>
+<td><code>CVSS</code> Vector</td>
+<td>CVSS:3.0/AV:A/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:H</td>
+</tr>
+<tr>
+<td><code>CVSS</code> Version</td>
+<td>3.0</td>
+</tr>
+<tr>
+<td><code>CVSS</code> Source</td>
+<td>Tenable (NVD awaiting enrichment)</td>
+</tr>
+<tr>
+<td>Vulnerability Type</td>
+<td>Heap-based Buffer Overflow (CWE-122)</td>
+</tr>
+<tr>
+<td>Affected Software</td>
+<td>Linux Kernel NFSv4.0 server (<code>nfsd</code>)</td>
+</tr>
+<tr>
+<td>Affected Versions</td>
+<td>2.6.12 through 6.1.166, 6.6.129, 6.12.77, 6.18.19, 6.19.9</td>
+</tr>
+<tr>
+<td>Patch Status</td>
+<td>Fixed in stable branches (see Remediation section)</td>
+</tr>
+<tr>
+<td><code>PoC</code> Publicly Available</td>
+<td>No</td>
+</tr>
+</tbody>
+</table>
+<h2 id="context">Context</h2>
+<p>CVE-2026-31402 represents a classic buffer sizing miscalculation in
+the Linux kernel’s NFSv4.0 server implementation. The vulnerability has
+existed since Linux 2.6.12-rc2 (commit <code>1da177e4c3f4</code>) and
+went undetected for nearly two decades until security researcher
+Nicholas Carlini identified and reported it in early 2026.</p>
+<p>The flaw matters now because NFSv4.0 remains widely deployed in
+enterprise storage environments, and the exploitation prerequisites are
+minimal: network access to an NFSv4.0 server and the ability to
+establish two cooperating client connections. No authentication
+credentials are required.</p>
+<p>Organizations running NFS servers on unpatched kernels face potential
+kernel memory corruption, denial of service, or privilege escalation.
+The vulnerability is particularly concerning for shared hosting
+environments, cloud storage gateways, and enterprise NAS systems where
+multi-tenant isolation depends on kernel integrity.</p>
+<h2 id="disclosure-timeline">Disclosure Timeline</h2>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr>
+<th>Date (UTC)</th>
+<th>Event</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>2026-03-09</td>
+<td>CVE ID reserved by Linux CNA</td>
+</tr>
+<tr>
+<td>2026-02-24</td>
+<td>Patch authored by Jeff Layton</td>
+</tr>
+<tr>
+<td>2026-03-16 to 2026-03-25</td>
+<td>Fixes merged across stable kernel branches</td>
+</tr>
+<tr>
+<td>2026-04-03</td>
+<td>CVE published to NVD; public disclosure</td>
+</tr>
+<tr>
+<td>2026-04-05</td>
+<td>Tenable Nessus plugin 304931 released</td>
+</tr>
+<tr>
+<td>2026-04-07</td>
+<td>NVD record last updated</td>
+</tr>
+</tbody>
+</table>
+<h2 id="technical-detail">Technical Detail</h2>
+<h3 id="root-cause">Root Cause</h3>
+<p>The NFSv4.0 protocol implements a <strong>replay cache</strong> to
+handle idempotent operation retransmissions. When a client retries an
+operation, the server can replay the cached response rather than
+re-executing the operation. The kernel stores these encoded responses in
+a fixed-size inline buffer within each <code>nfs4_stateowner</code>
+structure.</p>
+<p>The buffer size constant <code>NFSD4_REPLAY_ISIZE</code> was set to
+<strong>112 bytes</strong> based on calculations for OPEN operation
+responses:</p>
+<pre class="diff"><code>+++ b/fs/nfsd/state.h
+@@ -430,11 +430,18 @@ struct nfs4_client_reclaim {
+    struct xdr_netobj   cr_princhash;
+ };
+ 
+-/* A reasonable value for REPLAY_ISIZE was estimated as follows:  
+- * The OPEN response, typically the largest, requires 
+- *   4(status) + 8(stateid) + 20(changeinfo) + 4(rflags) +  8(verifier) + 
+- *   4(deleg. type) + 8(deleg. stateid) + 4(deleg. recall flag) + 
+- *   20(deleg. space limit) + ~32(deleg. ace) = 112 bytes 
++/*
++ * REPLAY_ISIZE is sized for an OPEN response with delegation:
++ *   4(status) + 8(stateid) + 20(changeinfo) + 4(rflags) +
++ *   8(verifier) + 4(deleg. type) + 8(deleg. stateid) +
++ *   4(deleg. recall flag) + 20(deleg. space limit) +
++ *   ~32(deleg. ace) = 112 bytes
++ *
++ * Some responses can exceed this. A LOCK denial includes the conflicting
++ * lock owner, which can be up to 1024 bytes (NFS4_OPAQUE_LIMIT). Responses
++ * larger than REPLAY_ISIZE are not cached in rp_ibuf; only rp_status is
++ * saved. Enlarging this constant increases the size of every
++ * nfs4_stateowner.</code></pre>
+<p>This sizing did not account for <strong>LOCK denied
+responses</strong>, which must include the conflicting lock owner as a
+variable-length opaque field up to <strong>1024 bytes</strong>
+(<code>NFS4_OPAQUE_LIMIT</code>).</p>
+<h3 id="triggering-condition">Triggering Condition</h3>
+<p>When <code>nfsd4_encode_operation()</code> processes a LOCK denial,
+it copies the full encoded response into
+<code>rp_ibuf[NFSD4_REPLAY_ISIZE]</code> via
+<code>read_bytes_from_xdr_buf()</code> without bounds checking. A lock
+owner string near the 1024-byte limit produces a response exceeding the
+112-byte buffer by up to <strong>944 bytes</strong>, resulting in
+slab-out-of-bounds heap corruption.</p>
+<h3 id="attack-vector">Attack Vector</h3>
+<p>An unauthenticated remote attacker with two cooperating NFSv4.0
+clients can trigger this:</p>
+<ol type="1">
+<li><strong>Client A</strong> establishes a lock on a file with a large
+owner string (approaching 1024 bytes)</li>
+<li><strong>Client B</strong> requests a conflicting lock on the same
+file region</li>
+<li>The server denies Client B’s request and attempts to cache the
+denial response including Client A’s large owner string</li>
+<li>The oversized response overflows the replay buffer, corrupting
+adjacent heap memory</li>
+</ol>
+<h3 id="the-fix">The Fix</h3>
+<p>The patch adds a length check before copying into the replay buffer.
+If the encoded response exceeds <code>NFSD4_REPLAY_ISIZE</code>, the
+server sets <code>rp_buflen = 0</code> to skip caching the payload while
+preserving the status code. This approach avoids increasing the size of
+every <code>nfs4_stateowner</code> structure, which would waste memory
+for the common case of small lock owners.</p>
+<pre class="diff"><code>+++ b/fs/nfsd/nfs4xdr.c
+@@ -5438,9 +5438,14 @@ nfsd4_encode_operation(struct nfsd4_compoundres *resp, struct nfsd4_op *op)
+        int len = xdr-&gt;buf-&gt;len - post_err_offset;
+ 
+        so-&gt;so_replay.rp_status = op-&gt;status;
+-       so-&gt;so_replay.rp_buflen = len;
+-       read_bytes_from_xdr_buf(xdr-&gt;buf, post_err_offset,
++       if (len &lt;= NFSD4_REPLAY_ISIZE) {
++           so-&gt;so_replay.rp_buflen = len;
++           read_bytes_from_xdr_buf(xdr-&gt;buf,
++                       post_err_offset,
+                        so-&gt;so_replay.rp_buf, len);
++       } else {
++           so-&gt;so_replay.rp_buflen = 0;
++       }</code></pre>
+<p>The header file <code>fs/nfsd/state.h</code> was also updated to
+document that responses larger than <code>NFSD4_REPLAY_ISIZE</code> are
+not cached in <code>rp_ibuf</code>, with only <code>rp_status</code>
+preserved.</p>
+<h2 id="mitigation">Mitigation</h2>
+<p>Until patches can be applied, consider these exposure-reduction
+measures:</p>
+<ul>
+<li><strong>Restrict NFSv4.0 access</strong> to trusted client IP ranges
+via firewall rules or <code>/etc/exports</code> configuration</li>
+<li><strong>Monitor for suspicious patterns</strong>: Two clients from
+the same source establishing locks followed by conflicting lock requests
+with abnormally large owner strings</li>
+<li><strong>Enable kernel memory debugging</strong> (KASAN, KFENCE) in
+test environments to detect heap corruption early</li>
+<li><strong>Network segmentation</strong>: Isolate NFS servers from
+untrusted network segments where possible</li>
+</ul>
+<p>Note that upgrading to NFSv4.1 or later may provide different replay
+cache implementations, but this should be tested thoroughly before
+production deployment as protocol behavior changes may affect client
+compatibility.</p>
+<h2 id="remediation">Remediation</h2>
+<p>Apply the appropriate kernel patch for your stable branch. The fix
+has been merged to the following stable kernel versions:</p>
+<table>
+<thead>
+<tr>
+<th>Kernel Branch</th>
+<th>Fixed Version</th>
+<th>Commit</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>6.1.x</td>
+<td>6.1.167</td>
+<td><code>c9452c0797c95cf2378170df96cf4f4b3bca7eff</code></td>
+</tr>
+<tr>
+<td>6.6.x</td>
+<td>6.6.130</td>
+<td><code>8afb437ea1f70cacb4bbdf11771fb5c4d720b965</code></td>
+</tr>
+<tr>
+<td>6.12.x</td>
+<td>6.12.78</td>
+<td><code>dad0c3c0a8e5d1d6eb0fc455694ce3e25e6c57d0</code></td>
+</tr>
+<tr>
+<td>6.18.x</td>
+<td>6.18.20</td>
+<td><code>ae8498337dfdfda71bdd0b807c9a23a126011d76</code></td>
+</tr>
+<tr>
+<td>6.19.x</td>
+<td>6.19.10</td>
+<td><code>0f0e2a54a31a7f9ad2915db99156114872317388</code></td>
+</tr>
+<tr>
+<td>7.0-rc</td>
+<td>7.0-rc5</td>
+<td><code>5133b61aaf437e5f25b1b396b14242a6bb0508e2</code></td>
+</tr>
+</tbody>
+</table>
+<p>Upstream commit <code>5133b61aaf437e5f25b1b396b14242a6bb0508e2</code>
+authored by Jeff Layton contains the canonical fix.
+Distribution-specific packages should reference these commits for
+backport verification.</p>
+<h2 id="verification">Verification</h2>
+<h3 id="check-kernel-version">Check Kernel Version</h3>
+<pre class="bash"><code># Verify current kernel version
+uname -r
+
+# Check if vulnerable (examples of vulnerable ranges)
+# 5.15.0-105-generic - vulnerable
+# 6.1.0-20-amd64 - vulnerable
+# 6.1.167 or higher - patched</code></pre>
+<h3 id="verify-patch-presence-in-source">Verify Patch Presence in
+Source</h3>
+<p>If you have kernel source access, verify the fix is present:</p>
+<pre class="bash"><code># Check for the bounds check in nfs4xdr.c
+grep -A5 &quot;NFSD4_REPLAY_ISIZE&quot; fs/nfsd/nfs4xdr.c
+
+# Expected output should show the if/else block checking len &lt;= NFSD4_REPLAY_ISIZE
+# before calling read_bytes_from_xdr_buf()</code></pre>
+<h3 id="runtime-detection-kasan">Runtime Detection (KASAN)</h3>
+<p>If running a KASAN-enabled debug kernel, exploitation attempts would
+produce logs similar to:</p>
+<pre><code>==================================================================
+BUG: KASAN: slab-out-of-bounds in nfsd4_encode_operation+0x...
+Write of size 944 at addr ... by task nfsd/...</code></pre>
+<h2 id="references">References</h2>
+<ul>
+<li><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-31402">NVD -
+CVE-2026-31402</a></li>
+<li><a
+href="https://www.sentinelone.com/vulnerability-database/cve-2026-31402/">SentinelOne
+- CVE-2026-31402 Analysis</a></li>
+<li><a href="https://www.tenable.com/plugins/nessus/304931">Tenable -
+Nessus Plugin 304931</a></li>
+<li><a
+href="https://security.snyk.io/vuln/SNYK-CENTOS8-KERNELCORE-15943629">Snyk
+- SNYK-CENTOS8-KERNELCORE-15943629</a></li>
+<li><a
+href="https://osv.dev/vulnerability/ROOT-OS-DEBIAN-13-CVE-2026-31402">OSV
+- ROOT-OS-DEBIAN-13-CVE-2026-31402</a></li>
+<li><a
+href="https://git.kernel.org/stable/c/5133b61aaf437e5f25b1b396b14242a6bb0508e2">Linux
+Kernel Git - Commit 5133b61</a></li>
+<li><a
+href="https://git.kernel.org/stable/c/0f0e2a54a31a7f9ad2915db99156114872317388">Linux
+Kernel Git - Commit 0f0e2a5</a></li>
+<li><a
+href="https://git.kernel.org/stable/c/8afb437ea1f70cacb4bbdf11771fb5c4d720b965">Linux
+Kernel Git - Commit 8afb437</a></li>
+<li><a
+href="https://git.kernel.org/stable/c/ae8498337dfdfda71bdd0b807c9a23a126011d76">Linux
+Kernel Git - Commit ae84983</a></li>
+<li><a
+href="https://git.kernel.org/stable/c/c9452c0797c95cf2378170df96cf4f4b3bca7eff">Linux
+Kernel Git - Commit c9452c0</a></li>
+<li><a
+href="https://git.kernel.org/stable/c/dad0c3c0a8e5d1d6eb0fc455694ce3e25e6c57d0">Linux
+Kernel Git - Commit dad0c3c</a></li>
+<li><a href="https://bugzilla.redhat.com/showbug.cgi?id=2454844">Red Hat
+Bugzilla - Bug 2454844</a></li>
+</ul>]]></content:encoded>
+      <pubDate>Mon, 13 Apr 2026 02:21:30 +0700</pubDate>
+      <dc:creator>Farhan Kurnia Pratama</dc:creator>
+    </item>
+  </channel>
+</rss>

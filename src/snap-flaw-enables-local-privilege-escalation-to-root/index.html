@@ -1,0 +1,440 @@
+<!doctype html>
+<html lang="en" translate="no">
+  <head>
+    <meta charset="UTF-8">
+    <link rel="preconnect" href="https://cdn.fkp.my.id" crossorigin="anonymous">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>
+      Snap Flaw Enables Local Privilege Escalation To Root - Technical Insights by Farhan Kurnia
+      Pratama
+    </title>
+    <meta
+      name="description"
+      content="Local privilege escalation in snapd on Linux allows local attackers to get root privilege.">
+    <link
+      rel="canonical"
+      href="https://blog.fkp.my.id/snap-flaw-enables-local-privilege-escalation-to-root/">
+    <meta
+      property="og:title"
+      content="Snap Flaw Enables Local Privilege Escalation To Root - Technical Insights by Farhan Kurnia Pratama">
+    <meta
+      property="og:description"
+      content="Local privilege escalation in snapd on Linux allows local attackers to get root privilege.">
+    <meta property="og:type" content="article">
+    <meta
+      property="og:url"
+      content="https://blog.fkp.my.id/snap-flaw-enables-local-privilege-escalation-to-root/">
+    <meta property="og:site_name" content="blog.fkp.my.id">
+    <meta property="og:image" content="https://cdn.fkp.my.id/static/blog/images/hero.png">
+    <meta
+      property="og:image:secure_url"
+      content="https://cdn.fkp.my.id/static/blog/images/hero.png">
+    <meta property="og:image:type" content="image/png">
+    <meta property="og:image:width" content="1280">
+    <meta property="og:image:height" content="640">
+    <meta
+      property="og:image:alt"
+      content="Technical insights from a Software Engineer specializing in Linux/Unix and FOSS, exploring secure software design, system security, and digital privacy.">
+    <meta property="og:locale" content="en_US">
+    <meta property="og:locale:alternate" content="id_ID">
+    <meta property="profile:first_name" content="Farhan Kurnia">
+    <meta property="profile:last_name" content="Pratama">
+    <meta property="profile:username" content="farhnkrnapratma">
+    <meta property="profile:gender" content="male">
+    <meta property="article:published_time" content="2026-04-13T03:30:23+07:00">
+    <meta property="article:author" content="Farhan Kurnia Pratama">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta
+      name="twitter:title"
+      content="Snap Flaw Enables Local Privilege Escalation To Root - Technical Insights by Farhan Kurnia Pratama">
+    <meta
+      name="twitter:description"
+      content="Local privilege escalation in snapd on Linux allows local attackers to get root privilege.">
+    <meta name="twitter:image" content="https://cdn.fkp.my.id/static/blog/images/hero.png">
+    <meta name="twitter:label1" content="Reading time">
+    <meta name="twitter:data1" content="7 min read">
+    <meta property="article:tag" content="linux">
+    <meta property="article:tag" content="snapd">
+    <meta property="article:tag" content="cve">
+    <link rel="icon" href="https://cdn.fkp.my.id/static/favicons/favicon.ico">
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="https://cdn.fkp.my.id/static/favicons/apple-touch-icon.png">
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="https://cdn.fkp.my.id/static/favicons/favicon-32x32.png">
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="https://cdn.fkp.my.id/static/favicons/favicon-16x16.png">
+    <link
+      rel="alternate"
+      type="application/rss+xml"
+      title="Technical Insights by Farhan Kurnia Pratama"
+      href="https://blog.fkp.my.id/rss.xml">
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css"
+      media="(prefers-color-scheme: light)">
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github-dark-dimmed.min.css"
+      media="(prefers-color-scheme: dark)">
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+    <script>
+    hljs.highlightAll()
+    </script>
+    <link rel="preconnect" href="https://api.fontshare.com">
+    <link rel="preconnect" href="https://cdn.fontshare.com" crossorigin="anonymous">
+    <link
+      rel="preload"
+      href="https://api.fontshare.com/v2/css?f[]=sentient@1,2&amp;f[]=satoshi@1,2&amp;f[]=jet-brains-mono@1,2&amp;display=swap"
+      as="style">
+    <link
+      rel="stylesheet"
+      href="https://api.fontshare.com/v2/css?f[]=sentient@1,2&amp;f[]=satoshi@1,2&amp;f[]=jet-brains-mono@1,2&amp;display=swap">
+    <link rel="stylesheet" href="../style.css">
+  </head>
+  <body>
+    <div
+      id="scroll-progress"
+      class="fixed top-0 left-0 h-1 bg-fg-link z-50 transition-all duration-150"
+      style="width: 0%"></div>
+    <nav>
+      <div>
+        <a href="https://fkp.my.id" class="link-hover">Home</a>
+        <a href="https://blog.fkp.my.id/" class="link-active">Blog</a>
+        <a href="https://fkp.my.id/#contact" class="link-hover">Contact</a>
+        <a href="https://fkp.my.id/#support" class="link-hover">Support</a>
+      </div>
+    </nav>
+    <main>
+      <article>
+        <header>
+          <div class="flex flex-wrap gap-2 mb-3">
+            <span class="tag">linux</span><span class="tag">snapd</span><span class="tag">cve</span>
+          </div>
+          <h1>Snap Flaw Enables Local Privilege Escalation To Root</h1>
+          <div class="author-section mt-0">
+            <img
+              src="https://cdn.fkp.my.id/static/favicons/apple-touch-icon.png"
+              alt="Farhan Kurnia Pratama"
+              class="author-avatar"
+              width="32"
+              height="32"
+              loading="lazy">
+            <div class="author-info">
+              <span class="font-medium text-base text-fg-default dark:text-fg-white"
+                >Farhan Kurnia Pratama</span
+              >
+              <div class="text-sm text-fg-muted font-satoshi">
+                <time datetime="2026-04-13">Mon, 13 Apr 2026</time>
+                <span class="middot">&middot;</span>
+                <span>7 min read</span>
+              </div>
+            </div>
+          </div>
+          <hr class="border-0 border-t border-border-disabled my-6">
+        </header>
+        <section>
+          <blockquote>
+            <h2 id="tldr">TL;DR</h2>
+            <ul>
+              <li>
+                CVE-2026-3888 is a local privilege escalation in snapd where systemd-tmpfiles
+                cleanup of <code>/tmp/.snap</code> creates a window for an attacker to inject
+                attacker-controlled files that snap-confine later bind-mounts as root
+              </li>
+              <li>
+                Rated High severity with a CVSS 3.1 score of 7.8; exploitation requires a
+                low-privileged local account and a waiting period of 10 to 30 days, with no user
+                interaction needed
+              </li>
+              <li>
+                Update snapd immediately to the vendor-patched release; Ubuntu Server installations
+                are unaffected in default configurations because the cleanup timer is disabled
+              </li>
+              <li>
+                The flaw is a TOCTOU race condition affecting Ubuntu Desktop 24.04 and later; legacy
+                LTS releases received hardening patches though they are not vulnerable by default
+              </li>
+            </ul>
+          </blockquote>
+          <table>
+            <colgroup>
+              <col style="width: 50%">
+              <col style="width: 50%">
+            </colgroup>
+            <thead>
+              <tr>
+                <th>Field</th>
+                <th>Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>CVE ID</td>
+                <td>CVE-2026-3888</td>
+              </tr>
+              <tr>
+                <td>CVSS Score</td>
+                <td>7.8</td>
+              </tr>
+              <tr>
+                <td>CVSS Vector</td>
+                <td>CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:C/C:H/I:H/A:H</td>
+              </tr>
+              <tr>
+                <td>CVSS Version</td>
+                <td>3.1</td>
+              </tr>
+              <tr>
+                <td>CVSS Source</td>
+                <td>Canonical</td>
+              </tr>
+              <tr>
+                <td>Vulnerability Type</td>
+                <td>Local Privilege Escalation / TOCTOU Race Condition</td>
+              </tr>
+              <tr>
+                <td>Affected Software</td>
+                <td>snapd</td>
+              </tr>
+              <tr>
+                <td>Affected Versions</td>
+                <td>
+                  Ubuntu Desktop &gt;= 24.04 default installations; upstream snapd prior to 2.75
+                </td>
+              </tr>
+              <tr>
+                <td>Patch Status</td>
+                <td>Patched</td>
+              </tr>
+              <tr>
+                <td>PoC Publicly Available</td>
+                <td>Exploitation methodology publicly documented</td>
+              </tr>
+            </tbody>
+          </table>
+          <h2 id="context">Context</h2>
+          <p>
+            snapd is the daemon behind Ubuntu’s Snap packaging system, installed and active by
+            default on millions of Ubuntu Desktop hosts. The vulnerability lies in an interaction
+            between two privileged components:
+            <code>snap-confine</code>, the setuid root binary that constructs sandbox environments,
+            and <code>systemd-tmpfiles</code>, which handles lifecycle management of volatile
+            directories like <code>/tmp</code>.
+          </p>
+          <p>
+            In default Ubuntu Desktop configurations,
+            <code>systemd-tmpfiles</code>
+            periodically removes stale directories under <code>/tmp</code>. One of those
+            directories,
+            <code>/tmp/.snap</code>, is used by <code>snap-confine</code> during sandbox
+            initialization. When the cleanup routine deletes it, a local attacker can recreate the
+            directory and populate it with malicious content before
+            <code>snap-confine</code>
+            executes again. Because
+            <code>snap-confine</code>
+            runs with elevated privileges and performs bind mounts on that path, the attacker
+            achieves arbitrary code execution as root.
+          </p>
+          <p>
+            The attack complexity is high because it depends on timing. On Ubuntu 24.04, the cleanup
+            interval is roughly 30 days; on 25.10, it drops to about 10 days. No user interaction is
+            required, and the attacker only needs a low-privileged local account. I have not seen
+            evidence of active in-the-wild exploitation, but the mechanism has been reliably
+            reproduced in research and training environments.
+          </p>
+          <h2 id="disclosure-timeline">Disclosure Timeline</h2>
+          <table>
+            <colgroup>
+              <col style="width: 50%">
+              <col style="width: 50%">
+            </colgroup>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Event</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>2026-03-17</td>
+                <td>
+                  Qualys publishes advisory; Ubuntu releases USN-8102-1 and USN-8102-2; NVD
+                  publishes entry
+                </td>
+              </tr>
+              <tr>
+                <td>2026-03-18</td>
+                <td>NVD last modified</td>
+              </tr>
+              <tr>
+                <td>2026-03-25</td>
+                <td>Ubuntu security page last updated</td>
+              </tr>
+            </tbody>
+          </table>
+          <h2 id="technical-detail">Technical Detail</h2>
+          <p>
+            The root cause is a <strong>time-of-check to time-of-use (TOCTOU)</strong> gap combined
+            with predictable cleanup behavior.
+            <code>snap-confine</code>
+            assumes that <code>/tmp/.snap</code> is a trusted directory created and managed by the
+            system.
+            <code>systemd-tmpfiles</code>, configured via drop-in files under
+            <code>/usr/lib/tmpfiles.d/</code>, automatically deletes directories that exceed a
+            staleness threshold.
+          </p>
+          <p>The triggering condition is straightforward:</p>
+          <ol type="1">
+            <li>
+              <code>systemd-tmpfiles</code>
+              removes <code>/tmp/.snap</code> during its scheduled cleanup.
+            </li>
+            <li>
+              The attacker detects the deletion and recreates
+              <code>/tmp/.snap</code>
+              with attacker-owned files or symlinks.
+            </li>
+            <li>
+              The next time <code>snap-confine</code> initializes a sandbox, it bind-mounts the
+              attacker-controlled directory into the mount namespace with root privileges.
+            </li>
+          </ol>
+          <p>
+            This is not a memory corruption bug. It is a logic flaw in how two legitimate system
+            utilities trust shared state in a world-writable parent directory. Server installations
+            avoid the issue by default because <code>systemd-tmpfiles-clean.timer</code> is not
+            enabled on Ubuntu Server, so the directory is never automatically removed.
+          </p>
+          <p>
+            During the same review window, Qualys also identified a race condition in the
+            <code>uutils</code>
+            coreutils <code>rm</code> utility affecting Ubuntu 25.10. That flaw allowed arbitrary
+            file deletion during root-owned cron jobs. Ubuntu reverted the default
+            <code>rm</code>
+            to GNU coreutils prior to release and patched the upstream package separately. While
+            related to the same research effort, it is a distinct vulnerability tracked outside
+            CVE-2026-3888.
+          </p>
+          <h2 id="mitigation">Mitigation</h2>
+          <p>Until patching is complete, reduce exposure with the following controls:</p>
+          <ul>
+            <li>
+              <strong>Restrict local access</strong>: This vulnerability requires a local account.
+              Remove unnecessary users and enforce least-privilege access on shared workstations.
+            </li>
+            <li>
+              <strong>Monitor <code>/tmp/.snap</code></strong>: Audit for unexpected ownership or
+              permission changes on <code>/tmp/.snap</code>. A directory owned by an unprivileged
+              user is a clear anomaly.
+            </li>
+            <li>
+              <strong>Audit temporary directory activity</strong>: Look for unusual file creation or
+              symlink activity immediately under
+              <code>/tmp</code>.
+            </li>
+          </ul>
+          <p>
+            These steps do not eliminate the vulnerability, but they increase the probability of
+            detecting precursor activity.
+          </p>
+          <h2 id="remediation">Remediation</h2>
+          <p>
+            Canonical has released patches for all supported Ubuntu releases. Upgrade
+            <code>snapd</code>
+            to the fixed version for your distribution:
+          </p>
+          <ul>
+            <li>
+              <strong>Ubuntu 24.04 LTS</strong>: <code>snapd</code>
+              2.73+ubuntu24.04.2 or later
+            </li>
+            <li>
+              <strong>Ubuntu 25.10 LTS</strong>: <code>snapd</code>
+              2.73+ubuntu25.10.1 or later
+            </li>
+            <li>
+              <strong>Ubuntu 26.04 LTS (Dev)</strong>: <code>snapd</code>
+              2.74.1+ubuntu26.04.1 or later
+            </li>
+            <li>
+              <strong>Ubuntu 22.04 LTS</strong>: <code>snapd</code>
+              2.73+ubuntu22.04.1 or later
+            </li>
+            <li>
+              <strong>Ubuntu 20.04 LTS</strong>: <code>snapd</code>
+              2.67.1+20.04ubuntu1~esm1 or later (via Ubuntu Pro)
+            </li>
+            <li><strong>Ubuntu 18.04/16.04 LTS</strong>: ESM patches available via Ubuntu Pro</li>
+          </ul>
+          <p>
+            Upstream <code>snapd</code> versions prior to 2.75 are affected. The fix ensures that
+            <code>snap-confine</code>
+            validates the state of
+            <code>/tmp/.snap</code>
+            before performing privileged operations, closing the race window.
+          </p>
+          <h2 id="verification">Verification</h2>
+          <p>
+            Confirm the patch is installed and the system is not running an affected configuration:
+          </p>
+          <pre class="bash"><code># Check installed snapd version
+dpkg -l | grep snapd
+
+# Verify the cleanup timer is inactive on server installations
+systemctl is-active systemd-tmpfiles-clean.timer
+
+# Inspect /tmp/.snap ownership and permissions
+ls -ld /tmp/.snap</code></pre>
+          <p>
+            On a fully patched Ubuntu Desktop 24.04 or 25.10,
+            <code>dpkg -l</code>
+            should show the fixed release. If
+            <code>systemd-tmpfiles-clean.timer</code>
+            reports <code>inactive</code>, the host is not vulnerable via the default vector. If
+            <code>/tmp/.snap</code>
+            is present, it should be owned by
+            <code>root</code>.
+          </p>
+          <h2 id="references">References</h2>
+          <ul>
+            <li>
+              <a
+                href="https://blog.qualys.com/vulnerabilities-threat-research/2026/03/17/cve-2026-3888-important-snap-flaw-enables-local-privilege-escalation-to-root"
+                >Qualys - CVE-2026-3888 Advisory</a
+              >
+            </li>
+            <li>
+              <a href="https://ubuntu.com/security/CVE-2026-3888"
+                >Ubuntu Security - CVE-2026-3888</a
+              >
+            </li>
+            <li>
+              <a href="https://nvd.nist.gov/vuln/detail/CVE-2026-3888">NVD - CVE-2026-3888</a>
+            </li>
+            <li>
+              <a href="https://www.hackthebox.com/blog/CVE-2026-27944-CVE-2026-3888"
+                >Hack The Box - Snapshots and Slip-Ups</a
+              >
+            </li>
+          </ul>
+        </section>
+      </article>
+    </main>
+    <footer>
+      <div>
+        Made with ♥️ &
+        <a class="link-hover" href="https://tailwindcss.com">Tailwind</a>
+      </div>
+    </footer>
+    <script src="../script.ts"></script>
+  </body>
+</html>

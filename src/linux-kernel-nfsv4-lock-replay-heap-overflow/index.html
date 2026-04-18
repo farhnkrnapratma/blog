@@ -1,0 +1,559 @@
+<!doctype html>
+<html lang="en" translate="no">
+  <head>
+    <meta charset="UTF-8">
+    <link rel="preconnect" href="https://cdn.fkp.my.id" crossorigin="anonymous">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>
+      Linux Kernel NFSv4 LOCK Replay Heap Overflow - Technical Insights by Farhan Kurnia Pratama
+    </title>
+    <meta
+      name="description"
+      content="Heap overflow in Linux NFSv4 replay cache lets unauthenticated attackers trigger out-of-bounds writes via crafted conflicting LOCK requests.">
+    <link
+      rel="canonical"
+      href="https://blog.fkp.my.id/linux-kernel-nfsv4-lock-replay-heap-overflow/">
+    <meta
+      property="og:title"
+      content="Linux Kernel NFSv4 LOCK Replay Heap Overflow - Technical Insights by Farhan Kurnia Pratama">
+    <meta
+      property="og:description"
+      content="Heap overflow in Linux NFSv4 replay cache lets unauthenticated attackers trigger out-of-bounds writes via crafted conflicting LOCK requests.">
+    <meta property="og:type" content="article">
+    <meta
+      property="og:url"
+      content="https://blog.fkp.my.id/linux-kernel-nfsv4-lock-replay-heap-overflow/">
+    <meta property="og:site_name" content="blog.fkp.my.id">
+    <meta property="og:image" content="https://cdn.fkp.my.id/static/blog/images/hero.png">
+    <meta
+      property="og:image:secure_url"
+      content="https://cdn.fkp.my.id/static/blog/images/hero.png">
+    <meta property="og:image:type" content="image/png">
+    <meta property="og:image:width" content="1280">
+    <meta property="og:image:height" content="640">
+    <meta
+      property="og:image:alt"
+      content="Technical insights from a Software Engineer specializing in Linux/Unix and FOSS, exploring secure software design, system security, and digital privacy.">
+    <meta property="og:locale" content="en_US">
+    <meta property="og:locale:alternate" content="id_ID">
+    <meta property="profile:first_name" content="Farhan Kurnia">
+    <meta property="profile:last_name" content="Pratama">
+    <meta property="profile:username" content="farhnkrnapratma">
+    <meta property="profile:gender" content="male">
+    <meta property="article:published_time" content="2026-04-13T02:21:30+07:00">
+    <meta property="article:author" content="Farhan Kurnia Pratama">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta
+      name="twitter:title"
+      content="Linux Kernel NFSv4 LOCK Replay Heap Overflow - Technical Insights by Farhan Kurnia Pratama">
+    <meta
+      name="twitter:description"
+      content="Heap overflow in Linux NFSv4 replay cache lets unauthenticated attackers trigger out-of-bounds writes via crafted conflicting LOCK requests.">
+    <meta name="twitter:image" content="https://cdn.fkp.my.id/static/blog/images/hero.png">
+    <meta name="twitter:label1" content="Reading time">
+    <meta name="twitter:data1" content="10 min read">
+    <meta property="article:tag" content="linux">
+    <meta property="article:tag" content="cve">
+    <meta property="article:tag" content="nfs">
+    <link rel="icon" href="https://cdn.fkp.my.id/static/favicons/favicon.ico">
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="https://cdn.fkp.my.id/static/favicons/apple-touch-icon.png">
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="https://cdn.fkp.my.id/static/favicons/favicon-32x32.png">
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="https://cdn.fkp.my.id/static/favicons/favicon-16x16.png">
+    <link
+      rel="alternate"
+      type="application/rss+xml"
+      title="Technical Insights by Farhan Kurnia Pratama"
+      href="https://blog.fkp.my.id/rss.xml">
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css"
+      media="(prefers-color-scheme: light)">
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github-dark-dimmed.min.css"
+      media="(prefers-color-scheme: dark)">
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+    <script>
+    hljs.highlightAll()
+    </script>
+    <link rel="preconnect" href="https://api.fontshare.com">
+    <link rel="preconnect" href="https://cdn.fontshare.com" crossorigin="anonymous">
+    <link
+      rel="preload"
+      href="https://api.fontshare.com/v2/css?f[]=sentient@1,2&amp;f[]=satoshi@1,2&amp;f[]=jet-brains-mono@1,2&amp;display=swap"
+      as="style">
+    <link
+      rel="stylesheet"
+      href="https://api.fontshare.com/v2/css?f[]=sentient@1,2&amp;f[]=satoshi@1,2&amp;f[]=jet-brains-mono@1,2&amp;display=swap">
+    <link rel="stylesheet" href="../style.css">
+  </head>
+  <body>
+    <div
+      id="scroll-progress"
+      class="fixed top-0 left-0 h-1 bg-fg-link z-50 transition-all duration-150"
+      style="width: 0%"></div>
+    <nav>
+      <div>
+        <a href="https://fkp.my.id" class="link-hover">Home</a>
+        <a href="https://blog.fkp.my.id/" class="link-active">Blog</a>
+        <a href="https://fkp.my.id/#contact" class="link-hover">Contact</a>
+        <a href="https://fkp.my.id/#support" class="link-hover">Support</a>
+      </div>
+    </nav>
+    <main>
+      <article>
+        <header>
+          <div class="flex flex-wrap gap-2 mb-3">
+            <span class="tag">linux</span><span class="tag">cve</span><span class="tag">nfs</span>
+          </div>
+          <h1>Linux Kernel NFSv4 LOCK Replay Heap Overflow</h1>
+          <div class="author-section mt-0">
+            <img
+              src="https://cdn.fkp.my.id/static/favicons/apple-touch-icon.png"
+              alt="Farhan Kurnia Pratama"
+              class="author-avatar"
+              width="32"
+              height="32"
+              loading="lazy">
+            <div class="author-info">
+              <span class="font-medium text-base text-fg-default dark:text-fg-white"
+                >Farhan Kurnia Pratama</span
+              >
+              <div class="text-sm text-fg-muted font-satoshi">
+                <time datetime="2026-04-13">Mon, 13 Apr 2026</time>
+                <span class="middot">&middot;</span>
+                <span>10 min read</span>
+              </div>
+            </div>
+          </div>
+          <hr class="border-0 border-t border-border-disabled my-6">
+        </header>
+        <section>
+          <blockquote>
+            <h2 id="tldr">TL;DR</h2>
+            <ul>
+              <li>
+                <strong>Heap overflow</strong>
+                in Linux kernel NFSv4.0 server replay cache allows slab-out-of-bounds write of up to
+                944 bytes when caching LOCK denial responses containing large lock owner strings
+              </li>
+              <li>
+                <strong>High severity</strong>
+                (CVSS 3.x: 8.1) - remotely exploitable by unauthenticated attackers with network
+                access to NFSv4.0 services; no known exploits in the wild yet
+              </li>
+              <li>
+                <strong>Immediate action</strong>: Upgrade to patched kernel versions (6.1.167+,
+                6.6.130+, 6.12.78+, 6.18.20+, 6.19.10+, or 7.0-rc5+) or apply vendor patches
+              </li>
+              <li>
+                <strong>Discovered by Nicholas Carlini</strong>
+                and disclosed April 3, 2026; affects all Linux kernels from 2.6.12 through stable
+                branches prior to March 2025 fixes
+              </li>
+            </ul>
+          </blockquote>
+          <h2 id="vulnerability-summary">Vulnerability Summary</h2>
+          <table>
+            <colgroup>
+              <col style="width: 50%">
+              <col style="width: 50%">
+            </colgroup>
+            <thead>
+              <tr>
+                <th>Field</th>
+                <th>Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>CVE</code> ID</td>
+                <td>CVE-2026-31402</td>
+              </tr>
+              <tr>
+                <td><code>CVSS</code> Score</td>
+                <td>8.1 (CVSS 3.x)</td>
+              </tr>
+              <tr>
+                <td><code>CVSS</code> Vector</td>
+                <td>CVSS:3.0/AV:A/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:H</td>
+              </tr>
+              <tr>
+                <td><code>CVSS</code> Version</td>
+                <td>3.0</td>
+              </tr>
+              <tr>
+                <td><code>CVSS</code> Source</td>
+                <td>Tenable (NVD awaiting enrichment)</td>
+              </tr>
+              <tr>
+                <td>Vulnerability Type</td>
+                <td>Heap-based Buffer Overflow (CWE-122)</td>
+              </tr>
+              <tr>
+                <td>Affected Software</td>
+                <td>Linux Kernel NFSv4.0 server (<code>nfsd</code>)</td>
+              </tr>
+              <tr>
+                <td>Affected Versions</td>
+                <td>2.6.12 through 6.1.166, 6.6.129, 6.12.77, 6.18.19, 6.19.9</td>
+              </tr>
+              <tr>
+                <td>Patch Status</td>
+                <td>Fixed in stable branches (see Remediation section)</td>
+              </tr>
+              <tr>
+                <td><code>PoC</code> Publicly Available</td>
+                <td>No</td>
+              </tr>
+            </tbody>
+          </table>
+          <h2 id="context">Context</h2>
+          <p>
+            CVE-2026-31402 represents a classic buffer sizing miscalculation in the Linux kernel’s
+            NFSv4.0 server implementation. The vulnerability has existed since Linux 2.6.12-rc2
+            (commit <code>1da177e4c3f4</code>) and went undetected for nearly two decades until
+            security researcher Nicholas Carlini identified and reported it in early 2026.
+          </p>
+          <p>
+            The flaw matters now because NFSv4.0 remains widely deployed in enterprise storage
+            environments, and the exploitation prerequisites are minimal: network access to an
+            NFSv4.0 server and the ability to establish two cooperating client connections. No
+            authentication credentials are required.
+          </p>
+          <p>
+            Organizations running NFS servers on unpatched kernels face potential kernel memory
+            corruption, denial of service, or privilege escalation. The vulnerability is
+            particularly concerning for shared hosting environments, cloud storage gateways, and
+            enterprise NAS systems where multi-tenant isolation depends on kernel integrity.
+          </p>
+          <h2 id="disclosure-timeline">Disclosure Timeline</h2>
+          <table>
+            <colgroup>
+              <col style="width: 50%">
+              <col style="width: 50%">
+            </colgroup>
+            <thead>
+              <tr>
+                <th>Date (UTC)</th>
+                <th>Event</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>2026-03-09</td>
+                <td>CVE ID reserved by Linux CNA</td>
+              </tr>
+              <tr>
+                <td>2026-02-24</td>
+                <td>Patch authored by Jeff Layton</td>
+              </tr>
+              <tr>
+                <td>2026-03-16 to 2026-03-25</td>
+                <td>Fixes merged across stable kernel branches</td>
+              </tr>
+              <tr>
+                <td>2026-04-03</td>
+                <td>CVE published to NVD; public disclosure</td>
+              </tr>
+              <tr>
+                <td>2026-04-05</td>
+                <td>Tenable Nessus plugin 304931 released</td>
+              </tr>
+              <tr>
+                <td>2026-04-07</td>
+                <td>NVD record last updated</td>
+              </tr>
+            </tbody>
+          </table>
+          <h2 id="technical-detail">Technical Detail</h2>
+          <h3 id="root-cause">Root Cause</h3>
+          <p>
+            The NFSv4.0 protocol implements a <strong>replay cache</strong> to handle idempotent
+            operation retransmissions. When a client retries an operation, the server can replay the
+            cached response rather than re-executing the operation. The kernel stores these encoded
+            responses in a fixed-size inline buffer within each <code>nfs4_stateowner</code>
+            structure.
+          </p>
+          <p>
+            The buffer size constant <code>NFSD4_REPLAY_ISIZE</code> was set to
+            <strong>112 bytes</strong>
+            based on calculations for OPEN operation responses:
+          </p>
+          <pre class="diff"><code>+++ b/fs/nfsd/state.h
+@@ -430,11 +430,18 @@ struct nfs4_client_reclaim {
+    struct xdr_netobj   cr_princhash;
+ };
+ 
+-/* A reasonable value for REPLAY_ISIZE was estimated as follows:  
+- * The OPEN response, typically the largest, requires 
+- *   4(status) + 8(stateid) + 20(changeinfo) + 4(rflags) +  8(verifier) + 
+- *   4(deleg. type) + 8(deleg. stateid) + 4(deleg. recall flag) + 
+- *   20(deleg. space limit) + ~32(deleg. ace) = 112 bytes 
++/*
++ * REPLAY_ISIZE is sized for an OPEN response with delegation:
++ *   4(status) + 8(stateid) + 20(changeinfo) + 4(rflags) +
++ *   8(verifier) + 4(deleg. type) + 8(deleg. stateid) +
++ *   4(deleg. recall flag) + 20(deleg. space limit) +
++ *   ~32(deleg. ace) = 112 bytes
++ *
++ * Some responses can exceed this. A LOCK denial includes the conflicting
++ * lock owner, which can be up to 1024 bytes (NFS4_OPAQUE_LIMIT). Responses
++ * larger than REPLAY_ISIZE are not cached in rp_ibuf; only rp_status is
++ * saved. Enlarging this constant increases the size of every
++ * nfs4_stateowner.</code></pre>
+          <p>
+            This sizing did not account for <strong>LOCK denied responses</strong>, which must
+            include the conflicting lock owner as a variable-length opaque field up to
+            <strong>1024 bytes</strong>
+            (<code>NFS4_OPAQUE_LIMIT</code>).
+          </p>
+          <h3 id="triggering-condition">Triggering Condition</h3>
+          <p>
+            When <code>nfsd4_encode_operation()</code> processes a LOCK denial, it copies the full
+            encoded response into
+            <code>rp_ibuf[NFSD4_REPLAY_ISIZE]</code>
+            via
+            <code>read_bytes_from_xdr_buf()</code>
+            without bounds checking. A lock owner string near the 1024-byte limit produces a
+            response exceeding the 112-byte buffer by up to <strong>944 bytes</strong>, resulting in
+            slab-out-of-bounds heap corruption.
+          </p>
+          <h3 id="attack-vector">Attack Vector</h3>
+          <p>
+            An unauthenticated remote attacker with two cooperating NFSv4.0 clients can trigger
+            this:
+          </p>
+          <ol type="1">
+            <li>
+              <strong>Client A</strong>
+              establishes a lock on a file with a large owner string (approaching 1024 bytes)
+            </li>
+            <li><strong>Client B</strong> requests a conflicting lock on the same file region</li>
+            <li>
+              The server denies Client B’s request and attempts to cache the denial response
+              including Client A’s large owner string
+            </li>
+            <li>
+              The oversized response overflows the replay buffer, corrupting adjacent heap memory
+            </li>
+          </ol>
+          <h3 id="the-fix">The Fix</h3>
+          <p>
+            The patch adds a length check before copying into the replay buffer. If the encoded
+            response exceeds <code>NFSD4_REPLAY_ISIZE</code>, the server sets
+            <code>rp_buflen = 0</code>
+            to skip caching the payload while preserving the status code. This approach avoids
+            increasing the size of every
+            <code>nfs4_stateowner</code>
+            structure, which would waste memory for the common case of small lock owners.
+          </p>
+          <pre class="diff"><code>+++ b/fs/nfsd/nfs4xdr.c
+@@ -5438,9 +5438,14 @@ nfsd4_encode_operation(struct nfsd4_compoundres *resp, struct nfsd4_op *op)
+        int len = xdr-&gt;buf-&gt;len - post_err_offset;
+ 
+        so-&gt;so_replay.rp_status = op-&gt;status;
+-       so-&gt;so_replay.rp_buflen = len;
+-       read_bytes_from_xdr_buf(xdr-&gt;buf, post_err_offset,
++       if (len &lt;= NFSD4_REPLAY_ISIZE) {
++           so-&gt;so_replay.rp_buflen = len;
++           read_bytes_from_xdr_buf(xdr-&gt;buf,
++                       post_err_offset,
+                        so-&gt;so_replay.rp_buf, len);
++       } else {
++           so-&gt;so_replay.rp_buflen = 0;
++       }</code></pre>
+          <p>
+            The header file <code>fs/nfsd/state.h</code> was also updated to document that responses
+            larger than <code>NFSD4_REPLAY_ISIZE</code> are not cached in <code>rp_ibuf</code>, with
+            only <code>rp_status</code>
+            preserved.
+          </p>
+          <h2 id="mitigation">Mitigation</h2>
+          <p>Until patches can be applied, consider these exposure-reduction measures:</p>
+          <ul>
+            <li>
+              <strong>Restrict NFSv4.0 access</strong>
+              to trusted client IP ranges via firewall rules or
+              <code>/etc/exports</code>
+              configuration
+            </li>
+            <li>
+              <strong>Monitor for suspicious patterns</strong>: Two clients from the same source
+              establishing locks followed by conflicting lock requests with abnormally large owner
+              strings
+            </li>
+            <li>
+              <strong>Enable kernel memory debugging</strong>
+              (KASAN, KFENCE) in test environments to detect heap corruption early
+            </li>
+            <li>
+              <strong>Network segmentation</strong>: Isolate NFS servers from untrusted network
+              segments where possible
+            </li>
+          </ul>
+          <p>
+            Note that upgrading to NFSv4.1 or later may provide different replay cache
+            implementations, but this should be tested thoroughly before production deployment as
+            protocol behavior changes may affect client compatibility.
+          </p>
+          <h2 id="remediation">Remediation</h2>
+          <p>
+            Apply the appropriate kernel patch for your stable branch. The fix has been merged to
+            the following stable kernel versions:
+          </p>
+          <table>
+            <thead>
+              <tr>
+                <th>Kernel Branch</th>
+                <th>Fixed Version</th>
+                <th>Commit</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>6.1.x</td>
+                <td>6.1.167</td>
+                <td><code>c9452c0797c95cf2378170df96cf4f4b3bca7eff</code></td>
+              </tr>
+              <tr>
+                <td>6.6.x</td>
+                <td>6.6.130</td>
+                <td><code>8afb437ea1f70cacb4bbdf11771fb5c4d720b965</code></td>
+              </tr>
+              <tr>
+                <td>6.12.x</td>
+                <td>6.12.78</td>
+                <td><code>dad0c3c0a8e5d1d6eb0fc455694ce3e25e6c57d0</code></td>
+              </tr>
+              <tr>
+                <td>6.18.x</td>
+                <td>6.18.20</td>
+                <td><code>ae8498337dfdfda71bdd0b807c9a23a126011d76</code></td>
+              </tr>
+              <tr>
+                <td>6.19.x</td>
+                <td>6.19.10</td>
+                <td><code>0f0e2a54a31a7f9ad2915db99156114872317388</code></td>
+              </tr>
+              <tr>
+                <td>7.0-rc</td>
+                <td>7.0-rc5</td>
+                <td><code>5133b61aaf437e5f25b1b396b14242a6bb0508e2</code></td>
+              </tr>
+            </tbody>
+          </table>
+          <p>
+            Upstream commit <code>5133b61aaf437e5f25b1b396b14242a6bb0508e2</code>
+            authored by Jeff Layton contains the canonical fix. Distribution-specific packages
+            should reference these commits for backport verification.
+          </p>
+          <h2 id="verification">Verification</h2>
+          <h3 id="check-kernel-version">Check Kernel Version</h3>
+          <pre class="bash"><code># Verify current kernel version
+uname -r
+
+# Check if vulnerable (examples of vulnerable ranges)
+# 5.15.0-105-generic - vulnerable
+# 6.1.0-20-amd64 - vulnerable
+# 6.1.167 or higher - patched</code></pre>
+          <h3 id="verify-patch-presence-in-source">Verify Patch Presence in Source</h3>
+          <p>If you have kernel source access, verify the fix is present:</p>
+          <pre class="bash"><code># Check for the bounds check in nfs4xdr.c
+grep -A5 &quot;NFSD4_REPLAY_ISIZE&quot; fs/nfsd/nfs4xdr.c
+
+# Expected output should show the if/else block checking len &lt;= NFSD4_REPLAY_ISIZE
+# before calling read_bytes_from_xdr_buf()</code></pre>
+          <h3 id="runtime-detection-kasan">Runtime Detection (KASAN)</h3>
+          <p>
+            If running a KASAN-enabled debug kernel, exploitation attempts would produce logs
+            similar to:
+          </p>
+          <pre><code>==================================================================
+BUG: KASAN: slab-out-of-bounds in nfsd4_encode_operation+0x...
+Write of size 944 at addr ... by task nfsd/...</code></pre>
+          <h2 id="references">References</h2>
+          <ul>
+            <li>
+              <a href="https://nvd.nist.gov/vuln/detail/CVE-2026-31402">NVD - CVE-2026-31402</a>
+            </li>
+            <li>
+              <a href="https://www.sentinelone.com/vulnerability-database/cve-2026-31402/"
+                >SentinelOne - CVE-2026-31402 Analysis</a
+              >
+            </li>
+            <li>
+              <a href="https://www.tenable.com/plugins/nessus/304931"
+                >Tenable - Nessus Plugin 304931</a
+              >
+            </li>
+            <li>
+              <a href="https://security.snyk.io/vuln/SNYK-CENTOS8-KERNELCORE-15943629"
+                >Snyk - SNYK-CENTOS8-KERNELCORE-15943629</a
+              >
+            </li>
+            <li>
+              <a href="https://osv.dev/vulnerability/ROOT-OS-DEBIAN-13-CVE-2026-31402"
+                >OSV - ROOT-OS-DEBIAN-13-CVE-2026-31402</a
+              >
+            </li>
+            <li>
+              <a href="https://git.kernel.org/stable/c/5133b61aaf437e5f25b1b396b14242a6bb0508e2"
+                >Linux Kernel Git - Commit 5133b61</a
+              >
+            </li>
+            <li>
+              <a href="https://git.kernel.org/stable/c/0f0e2a54a31a7f9ad2915db99156114872317388"
+                >Linux Kernel Git - Commit 0f0e2a5</a
+              >
+            </li>
+            <li>
+              <a href="https://git.kernel.org/stable/c/8afb437ea1f70cacb4bbdf11771fb5c4d720b965"
+                >Linux Kernel Git - Commit 8afb437</a
+              >
+            </li>
+            <li>
+              <a href="https://git.kernel.org/stable/c/ae8498337dfdfda71bdd0b807c9a23a126011d76"
+                >Linux Kernel Git - Commit ae84983</a
+              >
+            </li>
+            <li>
+              <a href="https://git.kernel.org/stable/c/c9452c0797c95cf2378170df96cf4f4b3bca7eff"
+                >Linux Kernel Git - Commit c9452c0</a
+              >
+            </li>
+            <li>
+              <a href="https://git.kernel.org/stable/c/dad0c3c0a8e5d1d6eb0fc455694ce3e25e6c57d0"
+                >Linux Kernel Git - Commit dad0c3c</a
+              >
+            </li>
+            <li>
+              <a href="https://bugzilla.redhat.com/showbug.cgi?id=2454844"
+                >Red Hat Bugzilla - Bug 2454844</a
+              >
+            </li>
+          </ul>
+        </section>
+      </article>
+    </main>
+    <footer>
+      <div>
+        Made with ♥️ &
+        <a class="link-hover" href="https://tailwindcss.com">Tailwind</a>
+      </div>
+    </footer>
+    <script src="../script.ts"></script>
+  </body>
+</html>

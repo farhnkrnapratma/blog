@@ -1,0 +1,60 @@
+@import "tailwindcss";
+@import "./theme.css";
+@import "./base.css";
+
+.grid-container {
+  @apply grid grid-cols-1 md:grid-cols-2 gap-6 my-8;
+}
+
+.card {
+  @apply flex flex-col justify-between h-full border border-border-draft-emphasis rounded-lg p-6;
+  @apply no-underline text-fg-default dark:text-fg-white transition-shadow duration-200;
+}
+
+.card:hover {
+  @apply shadow-resting-medium;
+}
+
+.card h2 {
+  @apply text-xl font-semibold m-0 dark:text-fg-white;
+}
+
+.card p {
+  @apply text-base text-fg-muted m-0 leading-normal;
+}
+
+.card-header {
+  @apply grow;
+}
+
+.card hr {
+  @apply border-0 border-t-2 border-border-disabled my-5;
+}
+
+.card-footer {
+  @apply flex items-center text-sm text-fg-disabled;
+}
+
+.author-section {
+  @apply flex items-center gap-3 flex-nowrap;
+}
+
+.author-avatar {
+  @apply w-9 h-9 min-w-[2.25rem] min-h-[2.25rem] rounded-full object-cover shrink-0;
+}
+
+.author-info {
+  @apply flex flex-col gap-1;
+}
+
+.author-info a {
+  @apply font-medium;
+}
+
+.tag {
+  @apply inline-block rounded-md bg-bg-neutral-muted px-1.5 py-0.5 text-sm font-jetbrains text-fg-default dark:text-fg-muted no-underline;
+}
+
+.middot {
+  @apply mx-1 opacity-50;
+}

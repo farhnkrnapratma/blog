@@ -1,0 +1,12 @@
+# Normalize line endings to LF for all text files
+* text=auto eol=lf
+
+# Mark generated files
+*.lock linguist-generated=true
+
+# Binary files
+*.png binary
+*.ico binary
+
+# JSON
+site.webmanifest linguist-language=JSON
